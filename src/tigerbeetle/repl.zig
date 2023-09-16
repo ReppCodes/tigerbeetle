@@ -777,16 +777,21 @@ pub fn ReplType(comptime MessageBus: type) type {
                     }
                 },
                 .lookup_accounts => {
+                    std.debug.print("AJR sizeof: {d}\n", .{@sizeOf(tb.LookupAccountsResult)});
+                    std.debug.print("AJR results: {any}\n", .{result});
                     const lookup_account_results = std.mem.bytesAsSlice(
-                        tb.Account,
+                        tb.LookupAccountsResult,
                         result,
                     );
 
-                    if (lookup_account_results.len == 0) {
-                        try repl.fail("No such account or accounts exists.\n", .{});
-                    } else {
-                        for (lookup_account_results) |*account| {
-                            try repl.display_object(account);
+                    for (lookup_account_results) |lookup| {
+                        if (lookup.errcode == .ok) {
+                            try repl.display_object(&lookup.result);
+                        } else {
+                            try repl.fail(
+                                "Failed to lookup account ({}): {any}.\n",
+                                .{ lookup.index, lookup.errcode },
+                            );
                         }
                     }
                 },
@@ -807,15 +812,18 @@ pub fn ReplType(comptime MessageBus: type) type {
                 },
                 .lookup_transfers => {
                     const lookup_transfer_results = std.mem.bytesAsSlice(
-                        tb.Transfer,
+                        tb.LookupTransfersResult,
                         result,
                     );
 
-                    if (lookup_transfer_results.len == 0) {
-                        try repl.fail("No such transfer or transfers exists.\n", .{});
-                    } else {
-                        for (lookup_transfer_results) |*transfer| {
-                            try repl.display_object(transfer);
+                    for (lookup_transfer_results) |lookup| {
+                        if (lookup.errcode == .ok) {
+                            try repl.display_object(&lookup.result);
+                        } else {
+                            try repl.fail(
+                                "Failed to lookup transfer ({}): {any}.\n",
+                                .{ lookup.index, lookup.errcode },
+                            );
                         }
                     }
                 },

@@ -219,6 +219,26 @@ pub const CreateTransferResult = enum(u32) {
     }
 };
 
+pub const LookupAccountResult = enum(u32) {
+    ok = 0,
+    no_such_account = 1,
+    comptime {
+        for (std.enums.values(LookupAccountResult), 0..) |result, index| {
+            assert(@intFromEnum(result) == index);
+        }
+    }
+};
+
+pub const LookupTransferResult = enum(u32) {
+    ok = 0,
+    no_such_transfer = 1,
+    comptime {
+        for (std.enums.values(LookupTransferResult), 0..) |result, index| {
+            assert(@intFromEnum(result) == index);
+        }
+    }
+};
+
 pub const CreateAccountsResult = extern struct {
     index: u32,
     result: CreateAccountResult,
@@ -236,6 +256,26 @@ pub const CreateTransfersResult = extern struct {
     comptime {
         assert(@sizeOf(CreateTransfersResult) == 8);
         assert(stdx.no_padding(CreateTransfersResult));
+    }
+};
+
+pub const LookupAccountsResult = extern struct {
+    index: u32,
+    errcode: LookupAccountResult,
+    result: Account,
+
+    // comptime {
+    //     assert(@sizeOf(LookupAccountsResult) == 160);
+    // }
+};
+
+pub const LookupTransfersResult = extern struct {
+    index: u32,
+    result: Transfer,
+    errcode: LookupTransferResult,
+
+    comptime {
+        assert(@sizeOf(LookupTransfersResult) == 160);
     }
 };
 

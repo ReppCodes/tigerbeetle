@@ -392,19 +392,25 @@ pub const AccountingAuditor = struct {
         client_index: usize,
         timestamp: u64,
         ids: []const u128,
-        results: []const tb.Account,
+        results: []const tb.LookupAccountsResult,
     ) void {
         _ = client_index;
+
         assert(ids.len >= results.len);
         assert(self.timestamp < timestamp);
         defer assert(self.timestamp == timestamp);
 
-        var results_iterator = IteratorForLookup(tb.Account).init(results);
+        var results_iterator = IteratorForLookup(tb.LookupAccountsResult).init(results);
         defer assert(results_iterator.results.len == 0);
 
         for (ids) |account_id| {
             const account_index = self.account_id_to_index(account_id);
-            const account_lookup = results_iterator.take(account_id);
+            var account_lookup = null;
+            if (account_index == null) {
+                account_lookup = results_iterator.take(account_id, tb.LookupAccountsResult.no_such_account);
+            } else {
+                account_lookup = results_iterator.take(account_id, tb.LookupAccountsResult.ok);
+            }
 
             if (account_index < self.accounts.len and self.accounts_created[account_index]) {
                 // If this assertion fails, `lookup_accounts` didn't return an account when it
@@ -416,20 +422,20 @@ pub const AccountingAuditor = struct {
                 const account_expect = &self.accounts[account_index];
                 if (!std.mem.eql(
                     u8,
-                    std.mem.asBytes(account_lookup.?),
+                    std.mem.asBytes(account_lookup.index),
                     std.mem.asBytes(account_expect),
                 )) {
                     log.err("on_lookup_accounts: account data mismatch " ++
                         "account_id={} expect={} lookup={}", .{
                         account_id,
                         account_expect,
-                        account_lookup.?,
+                        account_lookup.index,
                     });
                     @panic("on_lookup_accounts: account data mismatch");
                 }
             } else {
                 // If this assertion fails, `lookup_accounts` returned an account when it shouldn't.
-                assert(account_lookup == null);
+                assert(account_lookup.errcode == tb.LookupAccountsResult.no_such_account);
             }
         }
         self.tick_to_timestamp(timestamp);
@@ -550,7 +556,7 @@ pub fn IteratorForCreate(comptime Result: type) type {
 }
 
 pub fn IteratorForLookup(comptime Result: type) type {
-    assert(Result == tb.Account or Result == tb.Transfer);
+    assert(Result == tb.LookupAccountsResult or Result == tb.LookupTransfersResult);
 
     return struct {
         const Self = @This();
@@ -561,8 +567,9 @@ pub fn IteratorForLookup(comptime Result: type) type {
             return .{ .results = results };
         }
 
-        pub fn take(self: *Self, id: u128) ?*const Result {
-            if (self.results.len > 0 and self.results[0].id == id) {
+        pub fn take(self: *Self, event_index: usize, errcode: tb.LookupAccountResult) ?std.meta.fieldInfo(Result, .result).type {
+            _ = errcode;
+            if (self.results.len > 0 and self.results[0].index == event_index) {
                 defer self.results = self.results[1..];
                 return &self.results[0];
             } else {

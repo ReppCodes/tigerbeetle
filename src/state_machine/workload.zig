@@ -354,13 +354,13 @@ pub fn WorkloadType(comptime AccountingStateMachine: type) type {
                     client_index,
                     timestamp,
                     std.mem.bytesAsSlice(u128, request_body),
-                    std.mem.bytesAsSlice(tb.Account, reply_body),
+                    std.mem.bytesAsSlice(tb.LookupAccountsResult, reply_body),
                 ),
                 .lookup_transfers => self.on_lookup_transfers(
                     client_index,
                     timestamp,
                     std.mem.bytesAsSlice(u128, request_body),
-                    std.mem.bytesAsSlice(tb.Transfer, reply_body),
+                    std.mem.bytesAsSlice(tb.LookupTransfersResult, reply_body),
                 ),
             }
         }
